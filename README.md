@@ -1,6 +1,6 @@
 # Terminal Snake game in C. 
 
-Linked list + 2D array implemenation
+Linked list + 2D array implemenation. Not tested on Windows system.
 
 # Dependencies
 
