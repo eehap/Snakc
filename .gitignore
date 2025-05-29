@@ -5,3 +5,6 @@ board.c
 *.log
 
 snake
+
+extra
+extra/*

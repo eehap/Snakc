@@ -227,7 +227,7 @@ void print_status(SnakeNode* snake, GameState* game_state) {
     mvprintw(3, 55, "Direction: %c", snake->drawc);
 }
 
-// TODO: FIX THIS !!!
+// TODO: REFACTOR THIS FUNCTION
 void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
     snake->prev_y = snake->y;
     snake->prev_x = snake->x;
@@ -317,6 +317,7 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
 }
 
 void get_user_input(SnakeNode* snake) {
+    // TODO: FIX INPUT BUFFERING
     switch (getch()) {
         case SNAKE_MOVE_UP:
             if (snake->dir == DOWN) return;  // Prevent reversing direction
