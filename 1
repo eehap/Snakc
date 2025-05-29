@@ -34,13 +34,11 @@ char time_buffer[26];
 
 char* get_line();
 void get_user_input(SnakeNode* snake);
-void move_snake(SnakeNode* snake, int** board, GameState* game_state);
+void move_snake(SnakeNode* snake, int** board);
 SnakeNode* add_snake_node(SnakeNode* snake, int** board);
 void add_fruit(int** board);
 void check_collision(SnakeNode* snake, int** board);
 void print_status(SnakeNode* snake, GameState* game_state);
-int hard_mode = 1;  // Global variable to toggle hard mode
-int quit;
 
 enum Direction { UP, DOWN, LEFT, RIGHT };
 enum EntityType { EMPTY, SNAKE_HEAD, SNAKE_BODY, FRUIT, WALL };
@@ -67,7 +65,8 @@ void game_loop(SnakeNode* snake, int** board) {
     SnakeNode* tail;
     GameState* game_state = malloc(sizeof(GameState));
     game_state->score = 0;
-    while (!quit) {
+    int loop_counter = 0;
+    while (1) {
         print_status(snake, game_state);
         fflush(stdin);
         timer = time(NULL);
@@ -76,16 +75,15 @@ void game_loop(SnakeNode* snake, int** board) {
                  tm_info);
 
         get_user_input(snake);
-        move_snake(snake, board, game_state);
+        move_snake(snake, board);
+
+        if (loop_counter % 50 == 0) {
+            game_state->score += 100;
+        }
+        loop_counter++;
 
         refresh();
-        if (hard_mode) {
-            // In hard mode, the snake moves faster as the score increases
-            sleep_ms(GAME_BASE_SPEED - game_state->score / 100);
-        } else {
-            // Normal mode speed
-            sleep_ms(GAME_BASE_SPEED);
-        }
+        sleep_ms(GAME_BASE_SPEED - game_state->score / 100);
     }
 
     // deallocate memory
@@ -95,7 +93,7 @@ void game_loop(SnakeNode* snake, int** board) {
         free(temp);
     }
 
-    for (int i = 0; i < UP_BOUND_X; ++i) {
+    for (int i = 0; i < 100; ++i) {
         free(board[i]);
     }
 
@@ -105,11 +103,11 @@ void game_loop(SnakeNode* snake, int** board) {
 }
 
 void init_game() {
-    int** game_board = malloc(UP_BOUND_Y * sizeof(int*));
+    int** game_board = malloc(100 * sizeof(int*));
 
-    for (int i = 0; i < UP_BOUND_Y; ++i) {
-        game_board[i] = malloc(UP_BOUND_X * sizeof(int));
-        for (int j = 0; j < UP_BOUND_X; ++j) {
+    for (int i = 0; i < 100; ++i) {
+        game_board[i] = malloc(100 * sizeof(int));
+        for (int j = 0; j < 100; ++j) {
             if (i == LOW_BOUND_Y || i == UP_BOUND_Y - 1 || j == LOW_BOUND_X ||
                 j == UP_BOUND_X - 1) {
                 game_board[i][j] = WALL;  // Set walls
@@ -202,18 +200,17 @@ void update_snake_nodes(SnakeNode* snake_head, int** board) {
 }
 
 void print_status(SnakeNode* snake, GameState* game_state) {
-    mvprintw(1, 55, "Score: %d", game_state->score);
-    mvprintw(2, 55, "Snake Position: (%d, %d)", snake->y, snake->x);
-    mvprintw(3, 55, "Direction: %c", snake->drawc);
+    mvprintw(0, 0, "Score: %d", game_state->score);
+    mvprintw(1, 0, "Snake Position: (%d, %d)", snake->y, snake->x);
+    mvprintw(2, 0, "Direction: %c", snake->drawc);
 }
 
-void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
+void move_snake(SnakeNode* snake, int** board) {
     snake->prev_y = snake->y;
     snake->prev_x = snake->x;
     switch (snake->dir) {
         case UP:
             if (board[snake->y - 1][snake->x] == FRUIT) {
-                game_state->score += 100;
                 add_fruit(board);
                 snake->tail = add_snake_node(snake->tail, board);
             } else if (board[snake->y - 1][snake->x] == SNAKE_BODY) {
@@ -223,14 +220,15 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 exit(0);
             } else if (board[snake->y - 1][snake->x] == WALL) {
                 // Collision with wall
-                snake->y += UP_BOUND_Y - 2;
+                endwin();
+                printf("Game Over! You hit a wall.\n");
+                exit(0);
             }
             --(snake->y);
             snake->drawc = '^';
             break;
         case DOWN:
             if (board[snake->y + 1][snake->x] == FRUIT) {
-                game_state->score += 100;
                 add_fruit(board);
                 snake->tail = add_snake_node(snake->tail, board);
             } else if (board[snake->y + 1][snake->x] == SNAKE_BODY) {
@@ -240,15 +238,15 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 exit(0);
             } else if (board[snake->y + 1][snake->x] == WALL) {
                 // Collision with wall
-                // Loop over other side of the wall
-                snake->y -= UP_BOUND_Y - 2;
+                endwin();
+                printf("Game Over! You hit a wall.\n");
+                exit(0);
             }
             ++(snake->y);
             snake->drawc = 'v';
             break;
         case LEFT:
             if (board[snake->y][snake->x - 1] == FRUIT) {
-                game_state->score += 100;
                 add_fruit(board);
                 snake->tail = add_snake_node(snake->tail, board);
             } else if (board[snake->y][snake->x - 1] == SNAKE_BODY) {
@@ -258,14 +256,15 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 exit(0);
             } else if (board[snake->y][snake->x - 1] == WALL) {
                 // Collision with wall
-                snake->x += UP_BOUND_X - 2;
+                endwin();
+                printf("Game Over! You hit a wall.\n");
+                exit(0);
             }
             --(snake->x);
             snake->drawc = '<';
             break;
         case RIGHT:
             if (board[snake->y][snake->x + 1] == FRUIT) {
-                game_state->score += 100;
                 add_fruit(board);
                 snake->tail = add_snake_node(snake->tail, board);
             } else if (board[snake->y][snake->x + 1] == SNAKE_BODY) {
@@ -275,7 +274,9 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 exit(0);
             } else if (board[snake->y][snake->x + 1] == WALL) {
                 // Collision with wall
-                snake->x -= UP_BOUND_X - 2;
+                endwin();
+                printf("Game Over! You hit a wall.\n");
+                exit(0);
             }
             ++(snake->x);
             snake->drawc = '>';
@@ -305,7 +306,5 @@ void get_user_input(SnakeNode* snake) {
             if (snake->dir == LEFT) return;  // Prevent reversing direction
             snake->dir = RIGHT;
             break;
-        case 'q':
-            quit = 1;
     }
 }
