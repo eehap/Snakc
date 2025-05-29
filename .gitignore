@@ -1,0 +1,5 @@
+utils.c
+board.c
+
+.clang-format
+*.log
