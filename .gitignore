@@ -3,3 +3,5 @@ board.c
 
 .clang-format
 *.log
+
+snake

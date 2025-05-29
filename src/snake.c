@@ -63,21 +63,30 @@ struct GameState {
 
 void sleep_ms(int ms) { usleep(ms * 1000); }
 
+void update_time() {
+    timer = time(NULL);
+    tm_info = localtime(&timer);
+    strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S", tm_info);
+}
+
 void game_loop(SnakeNode* snake, int** board) {
     SnakeNode* tail;
     GameState* game_state = malloc(sizeof(GameState));
     game_state->score = 0;
+    int loop_count = 0;
     while (!quit) {
-        print_status(snake, game_state);
         fflush(stdin);
-        timer = time(NULL);
-        tm_info = localtime(&timer);
-        strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S",
-                 tm_info);
 
+        update_time();
+        print_status(snake, game_state);
         get_user_input(snake);
         move_snake(snake, board, game_state);
 
+        if (loop_count % 50 == 0 && hard_mode) {
+            snake->tail = add_snake_node(snake->tail, board);
+            add_fruit(board);
+        }
+        loop_count++;
         refresh();
         if (hard_mode) {
             // In hard mode, the snake moves faster as the score increases
@@ -99,9 +108,12 @@ void game_loop(SnakeNode* snake, int** board) {
         free(board[i]);
     }
 
-    free(game_state);
-
     free(board);
+
+    fprintf(fp, "[%s][game_loop] Game Over! Final Score: %d\n", time_buffer,
+            game_state->score);
+
+    free(game_state);
 }
 
 void init_game() {
@@ -144,18 +156,26 @@ void init_game() {
 void add_fruit(int** board) {
     srand(timer);
     int fruit_x, fruit_y;
-
-    do {
-        fruit_x = LOW_BOUND_X + rand() % (UP_BOUND_X - LOW_BOUND_X);
-        fruit_y = LOW_BOUND_Y + rand() % (UP_BOUND_Y - LOW_BOUND_Y);
-    } while (board[fruit_y][fruit_x] != EMPTY);
+    int first = 0;
 
 #ifdef DEBUG
     static int fruit_counter = 0;
-    static const char function_name[] = "add_fruit";
+#endif
 
-    fprintf(fp, "[%s][%s] Fruit [#%d] init pos: y =  %d, x =  %d\n",
-            time_buffer, function_name, ++fruit_counter, fruit_y, fruit_x);
+    do {
+#ifdef DEBUG
+        if (first == 1) {
+            fprintf(fp, "[%s][add_fruit] Re-adding fruit\n", time_buffer);
+        }
+#endif
+        fruit_x = LOW_BOUND_X + rand() % (UP_BOUND_X - LOW_BOUND_X);
+        fruit_y = LOW_BOUND_Y + rand() % (UP_BOUND_Y - LOW_BOUND_Y);
+        first = 1;
+    } while (board[fruit_y][fruit_x] != EMPTY);
+
+#ifdef DEBUG
+    fprintf(fp, "[%s][add_fruit] Fruit [#%02d] init pos: y =  %d, x =  %d\n",
+            time_buffer, ++fruit_counter, fruit_y, fruit_x);
 #endif
 
     board[fruit_y][fruit_x] = FRUIT;
@@ -207,6 +227,7 @@ void print_status(SnakeNode* snake, GameState* game_state) {
     mvprintw(3, 55, "Direction: %c", snake->drawc);
 }
 
+// TODO: FIX THIS !!!
 void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
     snake->prev_y = snake->y;
     snake->prev_x = snake->x;
@@ -218,9 +239,11 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 snake->tail = add_snake_node(snake->tail, board);
             } else if (board[snake->y - 1][snake->x] == SNAKE_BODY) {
                 // Collision with itself
-                endwin();
-                printf("Game Over! You collided with yourself.\n");
-                exit(0);
+                fprintf(fp,
+                        "[%s][move_snake] Collision with itself at (%d, %d)\n",
+                        time_buffer, snake->y, snake->x);
+                quit = 1;
+                return;
             } else if (board[snake->y - 1][snake->x] == WALL) {
                 // Collision with wall
                 snake->y += UP_BOUND_Y - 2;
@@ -235,9 +258,11 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 snake->tail = add_snake_node(snake->tail, board);
             } else if (board[snake->y + 1][snake->x] == SNAKE_BODY) {
                 // Collision with itself
-                endwin();
-                printf("Game Over! You collided with yourself.\n");
-                exit(0);
+                fprintf(fp,
+                        "[%s][move_snake] Collision with itself at (%d, %d)\n",
+                        time_buffer, snake->y, snake->x);
+                quit = 1;
+                return;
             } else if (board[snake->y + 1][snake->x] == WALL) {
                 // Collision with wall
                 // Loop over other side of the wall
@@ -253,9 +278,11 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 snake->tail = add_snake_node(snake->tail, board);
             } else if (board[snake->y][snake->x - 1] == SNAKE_BODY) {
                 // Collision with itself
-                endwin();
-                printf("Game Over! You collided with yourself.\n");
-                exit(0);
+                fprintf(fp,
+                        "[%s][move_snake] Collision with itself at (%d, %d)\n",
+                        time_buffer, snake->y, snake->x);
+                quit = 1;
+                return;
             } else if (board[snake->y][snake->x - 1] == WALL) {
                 // Collision with wall
                 snake->x += UP_BOUND_X - 2;
@@ -270,9 +297,11 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 snake->tail = add_snake_node(snake->tail, board);
             } else if (board[snake->y][snake->x + 1] == SNAKE_BODY) {
                 // Collision with itself
-                endwin();
-                printf("Game Over! You collided with yourself.\n");
-                exit(0);
+                fprintf(fp,
+                        "[%s][move_snake] Collision with itself at (%d, %d)\n",
+                        time_buffer, snake->y, snake->x);
+                quit = 1;
+                return;
             } else if (board[snake->y][snake->x + 1] == WALL) {
                 // Collision with wall
                 snake->x -= UP_BOUND_X - 2;
