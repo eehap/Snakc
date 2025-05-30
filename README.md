@@ -1,4 +1,4 @@
-# Terminal Snake game in C. 
+# Terminal ASCII Snake game in C. 
 
 Random hobby project, still wip.
 
