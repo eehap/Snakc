@@ -10,9 +10,9 @@
 #define SNAKE_MOVE_RIGHT 'd'
 
 #define LOW_BOUND_Y 0
-#define UP_BOUND_Y 50
+#define UP_BOUND_Y 25
 #define LOW_BOUND_X 0
-#define UP_BOUND_X 50
+#define UP_BOUND_X 25
 
 // Higher is slower
 #define GAME_BASE_SPEED 100
@@ -39,8 +39,9 @@ SnakeNode* add_snake_node(SnakeNode* snake, int** board);
 void add_fruit(int** board);
 void check_collision(SnakeNode* snake, int** board);
 void print_status(SnakeNode* snake, GameState* game_state);
-int hard_mode = 1;  // Global variable to toggle hard mode
+int hard_mode = 0;  // Global variable to toggle hard mode
 int quit;
+int paused = 0;
 
 enum Direction { UP, DOWN, LEFT, RIGHT };
 enum EntityType { EMPTY, SNAKE_HEAD, SNAKE_BODY, FRUIT, WALL };
@@ -80,6 +81,9 @@ void game_loop(SnakeNode* snake, int** board) {
         update_time();
         print_status(snake, game_state);
         get_user_input(snake);
+        if (paused) {
+            continue;
+        }
         move_snake(snake, board, game_state);
 
         if (loop_count % 50 == 0 && hard_mode) {
@@ -132,13 +136,15 @@ void init_game() {
         }
     }
 
+    update_time();
+
     char filename[] = "snake_game.log";
     fp = fopen(filename, "w+");
 
     SnakeNode* snake = malloc(sizeof(SnakeNode));
 
-    snake->y = 25;
-    snake->x = 25;
+    snake->y = UP_BOUND_Y / 2;
+    snake->x = UP_BOUND_X / 2;
     snake->prev_y = snake->y;
     snake->prev_x = snake->x;
     snake->drawc = '^';
@@ -168,8 +174,8 @@ void add_fruit(int** board) {
             fprintf(fp, "[%s][add_fruit] Re-adding fruit\n", time_buffer);
         }
 #endif
-        fruit_x = LOW_BOUND_X + rand() % (UP_BOUND_X - LOW_BOUND_X);
-        fruit_y = LOW_BOUND_Y + rand() % (UP_BOUND_Y - LOW_BOUND_Y);
+        fruit_x = LOW_BOUND_X + 1 + rand() % (UP_BOUND_X - LOW_BOUND_X - 1);
+        fruit_y = LOW_BOUND_Y + 1 + rand() % (UP_BOUND_Y - LOW_BOUND_Y - 1);
         first = 1;
     } while (board[fruit_y][fruit_x] != EMPTY);
 
@@ -246,6 +252,11 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 return;
             } else if (board[snake->y - 1][snake->x] == WALL) {
                 // Collision with wall
+                if (board[UP_BOUND_Y - 2][snake->x] == FRUIT) {
+                    game_state->score += 100;
+                    add_fruit(board);
+                    snake->tail = add_snake_node(snake->tail, board);
+                }
                 snake->y += UP_BOUND_Y - 2;
             }
             --(snake->y);
@@ -264,6 +275,11 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 quit = 1;
                 return;
             } else if (board[snake->y + 1][snake->x] == WALL) {
+                if (board[LOW_BOUND_Y + 1][snake->x] == FRUIT) {
+                    game_state->score += 100;
+                    add_fruit(board);
+                    snake->tail = add_snake_node(snake->tail, board);
+                }
                 // Collision with wall
                 // Loop over other side of the wall
                 snake->y -= UP_BOUND_Y - 2;
@@ -284,6 +300,11 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 quit = 1;
                 return;
             } else if (board[snake->y][snake->x - 1] == WALL) {
+                if (board[snake->y][UP_BOUND_X - 2] == FRUIT) {
+                    game_state->score += 100;
+                    add_fruit(board);
+                    snake->tail = add_snake_node(snake->tail, board);
+                }
                 // Collision with wall
                 snake->x += UP_BOUND_X - 2;
             }
@@ -303,6 +324,11 @@ void move_snake(SnakeNode* snake, int** board, GameState* game_state) {
                 quit = 1;
                 return;
             } else if (board[snake->y][snake->x + 1] == WALL) {
+                if (board[snake->y][LOW_BOUND_X + 1] == FRUIT) {
+                    game_state->score += 100;
+                    add_fruit(board);
+                    snake->tail = add_snake_node(snake->tail, board);
+                }
                 // Collision with wall
                 snake->x -= UP_BOUND_X - 2;
             }
@@ -337,5 +363,7 @@ void get_user_input(SnakeNode* snake) {
             break;
         case 'q':
             quit = 1;
+        case ' ':
+            paused = (paused == 1) ? 0 : 1;
     }
 }
